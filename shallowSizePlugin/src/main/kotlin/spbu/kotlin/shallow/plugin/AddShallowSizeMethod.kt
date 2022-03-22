@@ -1,3 +1,4 @@
+
 package spbu.kotlin.shallow.plugin
 
 import arrow.meta.CliPlugin
@@ -47,7 +48,7 @@ val Meta.GenerateShallowSize: CliPlugin
                 )
             },
             irClass { clazz ->
-                if (clazz.isData   ) {
+                if (clazz.isData) {
                     val shallowSizeFunc = clazz.functions.filter { it.name.toString() == "shallowSize" }.first()
                     shallowSizeFunc.body = DeclarationIrBuilder(pluginContext, shallowSizeFunc.symbol).irBlockBody {
                         +irReturn(irInt(clazz.properties.sumOf { it.backingField?.type?.byteSize() ?: 0 }))
