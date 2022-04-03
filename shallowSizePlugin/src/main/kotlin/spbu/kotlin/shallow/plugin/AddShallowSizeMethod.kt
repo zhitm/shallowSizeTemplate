@@ -9,11 +9,16 @@ import org.jetbrains.kotlin.backend.common.lower.DeclarationIrBuilder
 import org.jetbrains.kotlin.ir.builders.irBlockBody
 import org.jetbrains.kotlin.ir.builders.irInt
 import org.jetbrains.kotlin.ir.builders.irReturn
+import org.jetbrains.kotlin.ir.declarations.IrClass
+import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.types.*
 import org.jetbrains.kotlin.ir.util.functions
 import org.jetbrains.kotlin.ir.util.properties
+import java.util.NoSuchElementException
 
 const val DEFAULT_SIZE = 8
+const val BOOLEAN_SIZE = 1
+const val UNIT_SIZE = 8
 
 fun IrType.byteSize(): Int =
     when {
@@ -27,10 +32,17 @@ fun IrType.byteSize(): Int =
         this.isULong() -> ULong.SIZE_BYTES
         this.isFloat() -> Float.SIZE_BYTES
         this.isDouble() -> Double.SIZE_BYTES
-        this.isBoolean() -> 1
-        this.isUnit() -> 1
+        this.isBoolean() -> BOOLEAN_SIZE
+        this.isUnit() -> UNIT_SIZE
         else -> DEFAULT_SIZE
     }
+
+fun IrClass.getShallowSizeFunc(): IrSimpleFunction {
+    return functions.find { it.name.toString() == "shallowSize" && it.valueParameters.isEmpty() }
+        ?: throw NoSuchElementException("shallowSize function wasn't added ")
+}
+
+fun IrClass.sumOfFields(): Int = this.properties.sumOf { it.backingField?.type?.byteSize() ?: 0 }
 
 val Meta.GenerateShallowSize: CliPlugin
     get() = "Generate shallowSize method" {
@@ -39,8 +51,8 @@ val Meta.GenerateShallowSize: CliPlugin
                 Transform.replace(
                     replacing = declaration.element,
                     newDeclaration = """
-                        $`@annotations` $kind $name $`(typeParameters)` $`(params)` $superTypes {
-                        fun shallowSize(): Int = TODO()
+                        $`@annotations` $modality $visibility $kind $name $`(typeParameters)` $`(params)` $superTypes {
+                        fun shallowSize(): Int = TODO("This function should be replaced at compile time")
                         $body
                         }
                         """.`class`
@@ -48,9 +60,9 @@ val Meta.GenerateShallowSize: CliPlugin
             },
             irClass { clazz ->
                 if (clazz.isData) {
-                    val shallowSizeFunc = clazz.functions.filter { it.name.toString() == "shallowSize" }.first()
+                    val shallowSizeFunc = clazz.getShallowSizeFunc()
                     shallowSizeFunc.body = DeclarationIrBuilder(pluginContext, shallowSizeFunc.symbol).irBlockBody {
-                        +irReturn(irInt(clazz.properties.sumOf { it.backingField?.type?.byteSize() ?: 0 }))
+                        +irReturn(irInt(clazz.sumOfFields()))
                     }
                 }
                 clazz
