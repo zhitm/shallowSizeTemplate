@@ -19,6 +19,7 @@ import java.util.NoSuchElementException
 const val DEFAULT_SIZE = 8
 const val BOOLEAN_SIZE = 1
 const val UNIT_SIZE = 8
+const val SHALLOW_SIZE_FUNC_NAME = "shallowSize"
 
 fun IrType.byteSize(): Int =
     when {
@@ -38,7 +39,7 @@ fun IrType.byteSize(): Int =
     }
 
 fun IrClass.getShallowSizeFunc(): IrSimpleFunction {
-    return functions.find { it.name.toString() == "shallowSize" && it.valueParameters.isEmpty() }
+    return functions.find { it.name.toString() == SHALLOW_SIZE_FUNC_NAME && it.valueParameters.isEmpty() }
         ?: throw NoSuchElementException("shallowSize function wasn't added ")
 }
 
