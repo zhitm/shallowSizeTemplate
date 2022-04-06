@@ -1,3 +1,4 @@
+
 package spbu.kotlin.shallow.plugin
 
 import arrow.meta.CliPlugin
